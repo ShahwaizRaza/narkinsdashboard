@@ -5,6 +5,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import time
 
+
 # Set Streamlit page config
 st.set_page_config(page_title="Retail Sales Dashboard", layout="wide", initial_sidebar_state='collapsed')
 
@@ -110,8 +111,20 @@ else:
     col4.metric("Total Units Sold", f"{total_units:,}")
     
     # Prepare data (make sure filtered_df is your dataframe with the data)
-    sales_by_branch = filtered_df.groupby('Branch')['Total Sales'].sum().sort_values(ascending=False).reset_index()
-    sales_by_category = filtered_df.groupby('Category')['Total Sales'].sum().sort_values(ascending=False).reset_index()
+    # Prepare data
+    sales_by_branch = (
+        filtered_df.groupby('Branch')[['SOLD QTY', 'Total Sales']]
+        .sum()
+        .sort_values(by='Total Sales', ascending=False)
+        .reset_index()
+    )
+
+    sales_by_category = (
+        filtered_df.groupby('Category')[['SOLD QTY', 'Total Sales']]
+        .sum()
+        .sort_values(by='Total Sales', ascending=False)
+        .reset_index()
+    )
 
     # Create columns for side by side layout
     col1, col2 = st.columns(2, gap='medium')
@@ -120,10 +133,11 @@ else:
         st.markdown("#### Sale by Branch")
         st.dataframe(
             sales_by_branch,
-            column_order=("Branch", "Total Sales"),
+            column_order=("Branch", "SOLD QTY", "Total Sales"),
             hide_index=True,
             column_config={
                 "Branch": st.column_config.TextColumn("Branch"),
+                "SOLD QTY": st.column_config.TextColumn("SOLD QTY"),
                 "Total Sales": st.column_config.ProgressColumn(
                     "Sales",
                     format="PKR %.0f",
@@ -138,10 +152,11 @@ else:
         st.markdown("#### Sale by Product Category")
         st.dataframe(
             sales_by_category,
-            column_order=("Category", "Total Sales"),
+            column_order=("Category", "SOLD QTY", "Total Sales"),
             hide_index=True,
             column_config={
                 "Category": st.column_config.TextColumn("Category"),
+                "SOLD QTY": st.column_config.TextColumn("SOLD QTY"),
                 "Total Sales": st.column_config.ProgressColumn(
                     "Sales",
                     format="PKR %.0f",
