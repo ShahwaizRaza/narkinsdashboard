@@ -81,20 +81,20 @@ if df.empty:
     st.warning("No data available to display.")
 else:
     # Sidebar filters
-    st.sidebar.header("Filter Options")
+    #st.sidebar.header("Filter Options")
     
-    min_date = df['Date'].min()
-    max_date = df['Date'].max()
+    #min_date = df['Date'].min()
+    #max_date = df['Date'].max()
     
-    date_range = st.sidebar.date_input(
-        "Select Date Range",
-        [min_date, max_date],
-        min_value=min_date,
-        max_value=max_date
-    )
+    #date_range = st.sidebar.date_input(
+    #    "Select Date Range",
+    #    [min_date, max_date],
+    #    min_value=min_date,
+    #    max_value=max_date
+    #)
     
-    branches = df['Branch'].unique().tolist()
-    selected_branch = st.sidebar.multiselect("Select Branch(es)", options=branches, default=branches)
+    #branches = df['Branch'].unique().tolist()
+    #selected_branch = st.sidebar.multiselect("Select Branch(es)", options=branches, default=branches)
     
     # Filter dataframe by date and branch
     start_date, end_date = date_range if len(date_range) == 2 else (min_date, max_date)
