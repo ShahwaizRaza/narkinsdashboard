@@ -40,7 +40,12 @@ st.markdown("""
 #MainMenu {visibility: hidden;}         /* Hides the hamburger menu */
 footer {visibility: hidden;}            /* Hides the footer ("Made with Streamlit") */
 header {visibility: hidden;}            /* Hides the main header */
-        
+
+/* Hide sidebar completely */
+[data-testid="stSidebar"] {
+    display: none;
+}
+    
 [data-testid="stMetric"] {
     background-image: linear-gradient(to right, #0077C2 , #59a5f5);
     padding-top: 1.5rem;
