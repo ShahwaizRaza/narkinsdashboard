@@ -97,9 +97,9 @@ else:
     #selected_branch = st.sidebar.multiselect("Select Branch(es)", options=branches, default=branches)
     
     # Filter dataframe by date and branch
-    start_date, end_date = date_range if len(date_range) == 2 else (min_date, max_date)
-    mask = (df['Date'] >= pd.to_datetime(start_date)) & (df['Date'] <= pd.to_datetime(end_date)) & (df['Branch'].isin(selected_branch))
-    filtered_df = df.loc[mask]
+    #start_date, end_date = date_range if len(date_range) == 2 else (min_date, max_date)
+    #mask = (df['Date'] >= pd.to_datetime(start_date)) & (df['Date'] <= pd.to_datetime(end_date)) & (df['Branch'].isin(selected_branch))
+    #filtered_df = df.loc[mask]
     
     # KPIs
     today = pd.Timestamp.today().normalize()
