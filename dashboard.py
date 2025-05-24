@@ -31,20 +31,31 @@ if st.button("🔄 Refresh Now"):
 
 df = get_sales_dataframe()
 
+# Hide sidebar, Streamlit menu, header, and footer
+hide_all_ui = """
+    <style>
+    /* Hide sidebar completely */
+    [data-testid="stSidebar"] {
+        display: none;
+    }
+
+    /* Hide Streamlit's top right menu */
+    #MainMenu {visibility: hidden;}
+
+    /* Hide footer */
+    footer {visibility: hidden;}
+
+    /* Hide header */
+    header {visibility: hidden;}
+    </style>
+"""
+
+st.markdown(hide_all_ui, unsafe_allow_html=True)
 
 #######################
 # CSS styling
 st.markdown("""
 <style>
-
-#MainMenu {visibility: hidden;}         /* Hides the hamburger menu */
-footer {visibility: hidden;}            /* Hides the footer ("Made with Streamlit") */
-header {visibility: hidden;}            /* Hides the main header */
-
-/* Hide sidebar completely */
-[data-testid="stSidebar"] {
-    display: none;
-}
     
 [data-testid="stMetric"] {
     background-image: linear-gradient(to right, #0077C2 , #59a5f5);
