@@ -36,6 +36,10 @@ df = get_sales_dataframe()
 # CSS styling
 st.markdown("""
 <style>
+
+#MainMenu {visibility: hidden;}         /* Hides the hamburger menu */
+footer {visibility: hidden;}            /* Hides the footer ("Made with Streamlit") */
+header {visibility: hidden;}            /* Hides the main header */
         
 [data-testid="stMetric"] {
     background-image: linear-gradient(to right, #0077C2 , #59a5f5);
