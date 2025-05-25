@@ -32,9 +32,6 @@ if st.button("🔄 Refresh Now"):
 df = get_sales_dataframe()
 
 
-
-st.markdown(hide_all_ui, unsafe_allow_html=True)
-
 #######################
 # CSS styling
 st.markdown("""
