@@ -27,6 +27,7 @@ if st.button("🔄 Refresh Now"):
     fetch_api_data("ProductDateWiseSale")  # Fetch fresh data
     st.cache_data.clear()  # Clear the cache so it re-runs the function
     st.rerun()  # Reload the script with updated data
+    df = get_sales_dataframe()
 
 
 df = get_sales_dataframe()
