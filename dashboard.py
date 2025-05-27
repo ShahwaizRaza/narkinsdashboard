@@ -6,9 +6,6 @@ import plotly.graph_objects as go
 import time
 
 
-# Get today’s date dynamically
-today = datetime.date.today()
-
 # Set Streamlit page config
 st.set_page_config(page_title="Retail Sales Dashboard", layout="wide", initial_sidebar_state='collapsed')
 
@@ -30,7 +27,6 @@ if st.button("🔄 Refresh Now"):
     fetch_api_data("ProductDateWiseSale")  # Fetch fresh data
     st.cache_data.clear()  # Clear the cache so it re-runs the function
     st.rerun()  # Reload the script with updated data
-    df = get_sales_dataframe()
 
 
 df = get_sales_dataframe()
@@ -40,7 +36,7 @@ df = get_sales_dataframe()
 # CSS styling
 st.markdown("""
 <style>
-    
+        
 [data-testid="stMetric"] {
     background-image: linear-gradient(to right, #0077C2 , #59a5f5);
     padding-top: 1.5rem;
@@ -80,37 +76,14 @@ div[data-testid="stDataFrame"] .st-emotion-cache-1dp5vir {
 if df.empty:
     st.warning("No data available to display.")
 else:
-    # Sidebar filters
-    st.sidebar.header("Filter Options")
-    
-    min_date = df['Date'].min().date()
-    max_date = df['Date'].max().date()
-    today = datetime.date.today()
-
-    # Set default end date: today if newer than data, else use latest available
-    default_end_date = today if today > max_data_date else max_data_date
-    
-    date_range = st.sidebar.date_input(
-        "Select Date Range",
-        [min_date, default_end_date],
-        min_value=min_date,
-        max_value=today
-    )
-    
-    branches = df['Branch'].unique().tolist()
-    selected_branch = st.sidebar.multiselect("Select Branch(es)", options=branches, default=branches)
-    
-    # Filter dataframe by date and branch
-    start_date, end_date = date_range if len(date_range) == 2 else (min_date, max_date)
-    mask = (df['Date'] >= pd.to_datetime(start_date)) & (df['Date'] <= pd.to_datetime(end_date)) & (df['Branch'].isin(selected_branch))
-    filtered_df = df.loc[mask]
-    
-    # KPIs
+    # KPI Calculations (No filtering)
     today = pd.Timestamp.today().normalize()
-    today_sales = filtered_df[filtered_df['Date'] == today]['Total Sales'].sum()
-    today_units = filtered_df[filtered_df['Date'] == today]['SOLD QTY'].sum()
-    month_sales = filtered_df[filtered_df['Date'].dt.month == today.month]['Total Sales'].sum()
-    total_units = filtered_df['SOLD QTY'].sum()
+    df['Date'] = pd.to_datetime(df['Date']).dt.normalize()
+
+    today_sales = df[df['Date'] == today]['Total Sales'].sum()
+    today_units = df[df['Date'] == today]['SOLD QTY'].sum()
+    month_sales = df[df['Date'].dt.month == today.month]['Total Sales'].sum()
+    total_units = df['SOLD QTY'].sum()
     
     col1, col2, col3, col4= st.columns(4, gap='medium')
     col1.metric("Today's Sales", f"{today_sales:,.0f}")
@@ -118,17 +91,16 @@ else:
     col3.metric("Monthly Sales", f"{month_sales:,.0f}")
     col4.metric("Total Units Sold", f"{total_units:,}")
     
-    # Prepare data (make sure filtered_df is your dataframe with the data)
-    # Prepare data
+    # Aggregations
     sales_by_branch = (
-        .groupby('Branch')[['SOLD QTY', 'Total Sales']]
+        df.groupby('Branch')[['SOLD QTY', 'Total Sales']]
         .sum()
         .sort_values(by='Total Sales', ascending=False)
         .reset_index()
     )
 
     sales_by_category = (
-        filtered_df.groupby('Category')[['SOLD QTY', 'Total Sales']]
+        df.groupby('Category')[['SOLD QTY', 'Total Sales']]
         .sum()
         .sort_values(by='Total Sales', ascending=False)
         .reset_index()
