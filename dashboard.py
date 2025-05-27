@@ -6,6 +6,9 @@ import plotly.graph_objects as go
 import time
 
 
+# Get today’s date dynamically
+today = datetime.date.today()
+
 # Set Streamlit page config
 st.set_page_config(page_title="Retail Sales Dashboard", layout="wide", initial_sidebar_state='collapsed')
 
@@ -80,14 +83,18 @@ else:
     # Sidebar filters
     st.sidebar.header("Filter Options")
     
-    min_date = df['Date'].min()
-    max_date = df['Date'].max()
+    min_date = df['Date'].min().date()
+    max_date = df['Date'].max().date()
+    today = datetime.date.today()
+
+    # Set default end date: today if newer than data, else use latest available
+    default_end_date = today if today > max_data_date else max_data_date
     
     date_range = st.sidebar.date_input(
         "Select Date Range",
-        [min_date, max_date],
+        [min_date, default_end_date],
         min_value=min_date,
-        max_value=max_date
+        max_value=today
     )
     
     branches = df['Branch'].unique().tolist()
@@ -114,7 +121,7 @@ else:
     # Prepare data (make sure filtered_df is your dataframe with the data)
     # Prepare data
     sales_by_branch = (
-        filtered_df.groupby('Branch')[['SOLD QTY', 'Total Sales']]
+        .groupby('Branch')[['SOLD QTY', 'Total Sales']]
         .sum()
         .sort_values(by='Total Sales', ascending=False)
         .reset_index()
