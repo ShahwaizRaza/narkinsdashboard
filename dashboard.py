@@ -5,6 +5,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import time
 
+
 # Set Streamlit page config
 st.set_page_config(page_title="Retail Sales Dashboard", layout="wide", initial_sidebar_state='collapsed')
 
@@ -26,6 +27,7 @@ if st.button("🔄 Refresh Now"):
     fetch_api_data("ProductDateWiseSale")  # Fetch fresh data
     st.cache_data.clear()  # Clear the cache so it re-runs the function
     st.rerun()  # Reload the script with updated data
+    get_sales_dataframe()
 
 
 df = get_sales_dataframe()
@@ -91,6 +93,23 @@ else:
     col4.metric("Total Units Sold", f"{total_units:,}")
     
     # Aggregations
+    today_sales_by_branch = (
+        df[df['Date'] == today]
+        .groupby('Branch')[['SOLD QTY', 'Total Sales']]
+        .sum()
+        .sort_values(by='Total Sales', ascending=False)
+        .reset_index()
+    )
+    
+    # Aggregations
+    today_sales_by_category = (
+        df[df['Date'] == today]
+        .groupby('Category')[['SOLD QTY', 'Total Sales']]
+        .sum()
+        .sort_values(by='Total Sales', ascending=False)
+        .reset_index()
+    )
+    
     sales_by_branch = (
         df.groupby('Branch')[['SOLD QTY', 'Total Sales']]
         .sum()
@@ -109,6 +128,45 @@ else:
     col1, col2 = st.columns(2, gap='medium')
     
     with col1:
+        st.markdown("#### 📌 Sale by Branch Today's")
+        st.dataframe(
+            today_sales_by_branch,
+            column_order=("Branch", "SOLD QTY", "Total Sales"),
+            hide_index=True,
+            column_config={
+                "Branch": st.column_config.TextColumn("Branch"),
+                "SOLD QTY": st.column_config.TextColumn("SOLD QTY"),
+                "Total Sales": st.column_config.ProgressColumn(
+                    "Sales",
+                    format="PKR %.0f",
+                    min_value=0,
+                    max_value=sales_by_branch["Total Sales"].max()
+                )
+            },
+            use_container_width=True
+        )
+        
+    with col2:
+        st.markdown("#### Sale by Product Category Today's")
+        st.dataframe(
+            today_sales_by_category,
+            column_order=("Category", "SOLD QTY", "Total Sales"),
+            hide_index=True,
+            column_config={
+                "Category": st.column_config.TextColumn("Category"),
+                "SOLD QTY": st.column_config.TextColumn("SOLD QTY"),
+                "Total Sales": st.column_config.ProgressColumn(
+                    "Sales",
+                    format="PKR %.0f",
+                    min_value=0,
+                    max_value=sales_by_category["Total Sales"].max()
+                )
+            },
+            use_container_width=True
+        )
+    # Create columns for side by side layout
+    col3, col4 = st.columns(2, gap='medium')
+    with col3:
         st.markdown("#### Sale by Branch")
         st.dataframe(
             sales_by_branch,
@@ -127,7 +185,7 @@ else:
             use_container_width=True
         )
         
-    with col2:
+    with col4:
         st.markdown("#### Sale by Product Category")
         st.dataframe(
             sales_by_category,
@@ -145,32 +203,6 @@ else:
             },
             use_container_width=True
         )
-    
-    
-    
-    #with col1:
-    #    st.subheader("Sales by Branch")
-    #    fig_branch = px.bar(
-    #        sales_by_branch, 
-    #       x='Branch', y='Total Sales',
-    #        labels={'Total Sales': 'Total Sales (PKR)', 'Branch': 'Branch'},
-    #        #title="Sales by Branch",
-    #        color='Total Sales',
-    #        color_continuous_scale='Blues'
-    #    )
-    #    st.plotly_chart(fig_branch, use_container_width=True)
-
-    #with col2:
-    #    #st.subheader("Sales by Product Category")
-    #    fig_category = px.bar(
-    #        sales_by_category,
-    #        x='Category', y='Total Sales',
-    #        labels={'Total Sales': 'Total Sales (PKR)', 'Category': 'Category'},
-    #        title="Sales by Product Category",
-    #        color='Total Sales',
-    #        color_continuous_scale='Oranges'
-    #    )
-    #    st.plotly_chart(fig_category, use_container_width=True)
     
     # Top 10 Products by Revenue
     top_10_products = df.groupby('Product Name')['Total Sales'].sum().sort_values(ascending=False).head(10).reset_index()
