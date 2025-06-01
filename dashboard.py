@@ -12,12 +12,6 @@ st.title("📊 Narkins / Narmins Monthly Sales Dashboard")
 
 # Fetch data
 fetch_api_data("ProductDateWiseSale")
-
-if st.button("🔄 Refresh Now"):
-    fetch_api_data("ProductDateWiseSale")  # Fetch fresh data
-    st.cache_data.clear()  # Clear the cache so it re-runs the function
-    st.rerun()  # Reload the script with updated data
-    get_sales_dataframe()
     
 def get_sales_dataframe():
     report_type = "ProductDateWiseSale"
@@ -27,7 +21,12 @@ def get_sales_dataframe():
         df = df.dropna(subset=['Date'])
         return df
     return pd.DataFrame()
-
+    
+if st.button("🔄 Refresh Now"):
+    fetch_api_data("ProductDateWiseSale")  # Fetch fresh data
+    st.cache_data.clear()  # Clear the cache so it re-runs the function
+    st.rerun()  # Reload the script with updated data
+    get_sales_dataframe()
 
 df = get_sales_dataframe()
 
