@@ -109,8 +109,7 @@ else:
     )
     
     sales_by_branch = (
-        df[df['Date'].dt.month == today.month]
-        .groupby('Branch')[['SOLD QTY', 'Total Sales']]
+        df.groupby('Branch')[['SOLD QTY', 'Total Sales']]
         .sum()
         .sort_values(by='Total Sales', ascending=False)
         .reset_index()
