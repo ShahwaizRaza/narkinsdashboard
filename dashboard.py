@@ -5,7 +5,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 import time
 
-
 # Set Streamlit page config
 st.set_page_config(page_title="Retail Sales Dashboard", layout="wide", initial_sidebar_state='collapsed')
 
