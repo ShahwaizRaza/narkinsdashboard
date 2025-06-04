@@ -4,15 +4,16 @@ from main import fetch_api_data, latest_data
 import plotly.express as px
 import plotly.graph_objects as go
 import time
-import requests
-# Set Streamlit page config
-st.set_page_config(page_title="Dashboards", layout="wide", initial_sidebar_state='collapsed')
 
-st.title("📊 Narkins / Narmins Monthly Sales Dashboard")
+
+# Set Streamlit page config
+st.set_page_config(page_title="Retail Sales Dashboard", layout="wide", initial_sidebar_state='collapsed')
+
+st.title("📊 Narkins / Narmin Monthly Sales Dashboard")
 
 # Fetch data
 fetch_api_data("ProductDateWiseSale")
-    
+
 def get_sales_dataframe():
     report_type = "ProductDateWiseSale"
     if report_type in latest_data and isinstance(latest_data[report_type], list):
@@ -21,12 +22,13 @@ def get_sales_dataframe():
         df = df.dropna(subset=['Date'])
         return df
     return pd.DataFrame()
-    
+
 if st.button("🔄 Refresh Now"):
     fetch_api_data("ProductDateWiseSale")  # Fetch fresh data
     st.cache_data.clear()  # Clear the cache so it re-runs the function
     st.rerun()  # Reload the script with updated data
     get_sales_dataframe()
+
 
 df = get_sales_dataframe()
 
@@ -114,7 +116,7 @@ else:
         .sort_values(by='Total Sales', ascending=False)
         .reset_index()
     )
-
+    
     sales_by_category = (
         df.groupby('Category')[['SOLD QTY', 'Total Sales']]
         .sum()
@@ -123,84 +125,22 @@ else:
     )
 
     # Create columns for side by side layout
-    col1, col2 = st.columns(2, gap='medium')
+    col1, col2, col3, col4 = st.columns(4, gap='medium')
     
+    
+        
     with col1:
-        st.markdown("#### 📌 Sale by Branch Today's")
-        st.dataframe(
-            today_sales_by_branch,
-            column_order=("Branch", "SOLD QTY", "Total Sales"),
-            hide_index=True,
-            column_config={
-                "Branch": st.column_config.TextColumn("Branch"),
-                "SOLD QTY": st.column_config.TextColumn("SOLD QTY"),
-                "Total Sales": st.column_config.ProgressColumn(
-                    "Sales",
-                    format="PKR %.0f",
-                    min_value=0,
-                    max_value=sales_by_branch["Total Sales"].max()
-                )
-            },
-            use_container_width=True
-        )
-        
+        st.subheader("📌 Today's Sale")
+        st.dataframe(today_sales_by_branch)
     with col2:
-        st.markdown("#### Sale by Product Category Today's")
-        st.dataframe(
-            today_sales_by_category,
-            column_order=("Category", "SOLD QTY", "Total Sales"),
-            hide_index=True,
-            column_config={
-                "Category": st.column_config.TextColumn("Category"),
-                "SOLD QTY": st.column_config.TextColumn("SOLD QTY"),
-                "Total Sales": st.column_config.ProgressColumn(
-                    "Sales",
-                    format="PKR %.0f",
-                    min_value=0,
-                    max_value=sales_by_category["Total Sales"].max()
-                )
-            },
-            use_container_width=True
-        )
-    # Create columns for side by side layout
-    col3, col4 = st.columns(2, gap='medium')
+        st.subheader("Today's Category Sale")
+        st.dataframe(today_sales_by_category)
     with col3:
-        st.markdown("#### Sale by Branch")
-        st.dataframe(
-            sales_by_branch,
-            column_order=("Branch", "SOLD QTY", "Total Sales"),
-            hide_index=True,
-            column_config={
-                "Branch": st.column_config.TextColumn("Branch"),
-                "SOLD QTY": st.column_config.TextColumn("SOLD QTY"),
-                "Total Sales": st.column_config.ProgressColumn(
-                    "Sales",
-                    format="PKR %.0f",
-                    min_value=0,
-                    max_value=sales_by_branch["Total Sales"].max()
-                )
-            },
-            use_container_width=True
-        )
-        
+        st.subheader("Monthly Sale")
+        st.dataframe(sales_by_branch)
     with col4:
-        st.markdown("#### Sale by Product Category")
-        st.dataframe(
-            sales_by_category,
-            column_order=("Category", "SOLD QTY", "Total Sales"),
-            hide_index=True,
-            column_config={
-                "Category": st.column_config.TextColumn("Category"),
-                "SOLD QTY": st.column_config.TextColumn("SOLD QTY"),
-                "Total Sales": st.column_config.ProgressColumn(
-                    "Sales",
-                    format="PKR %.0f",
-                    min_value=0,
-                    max_value=sales_by_category["Total Sales"].max()
-                )
-            },
-            use_container_width=True
-        )
+        st.subheader("Monthly Category Sale")
+        st.dataframe(sales_by_category)
     
     # Top 10 Products by Revenue
     top_10_products = df.groupby('Product Name')['Total Sales'].sum().sort_values(ascending=False).head(10).reset_index()
