@@ -7,7 +7,7 @@ import time
 
 
 # Set Streamlit page config
-st.set_page_config(page_title="Retail Sales Dashboard", layout="wide", initial_sidebar_state='collapsed')
+st.set_page_config(page_title="Dashboard", layout="wide", initial_sidebar_state='collapsed')
 
 st.title("📊 Narkins / Narmin Monthly Sales Dashboard")
 
