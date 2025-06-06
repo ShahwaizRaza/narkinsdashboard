@@ -34,7 +34,7 @@ df = get_sales_dataframe()
 
 
 #######################
-# CSS styling
+# CSS style
 st.markdown("""
 <style>
         
