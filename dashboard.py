@@ -4,6 +4,7 @@ from main import fetch_api_data, latest_data
 import plotly.express as px
 import plotly.graph_objects as go
 import time
+import requests
 
 
 # Set Streamlit page config
