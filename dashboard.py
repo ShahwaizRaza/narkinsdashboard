@@ -4,11 +4,10 @@ from main import fetch_api_data, latest_data
 import plotly.express as px
 import plotly.graph_objects as go
 import time
-import requests
 
 
 # Set Streamlit page config
-st.set_page_config(page_title="Dashboard", layout="wide", initial_sidebar_state='collapsed')
+st.set_page_config(page_title="Retail Sales Dashboard", layout="wide", initial_sidebar_state='collapsed')
 
 st.title("📊 Narkins / Narmin Monthly Sales Dashboard")
 
@@ -35,7 +34,7 @@ df = get_sales_dataframe()
 
 
 #######################
-# CSS style
+# CSS styling
 st.markdown("""
 <style>
         
@@ -70,8 +69,18 @@ div[data-testid="stDataFrame"] .st-emotion-cache-1dp5vir {
     background-color: #f0f0f0 !important;  /* Lighter track */
 }
 
+/* Hide the top-right icons and manage app button */
+[data-testid="stDecoration"],   /* top-right buttons like Share, GitHub */
+[data-testid="stSidebarNav"] {  /* "Manage app" button */
+    display: none !important;
+}
+
+/* Optional: hide Streamlit menu */
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
 
 </style>
+
 """, unsafe_allow_html=True)
 
 
@@ -145,9 +154,9 @@ else:
     
     # Top 10 Products by Revenue
     top_10_products = df.groupby('Product Name')['Total Sales'].sum().sort_values(ascending=False).head(10).reset_index()
-
-    # Top 5 Branches by Sales
-    top_5_branches = df.groupby('Branch')['Total Sales'].sum().sort_values(ascending=False).head(5).reset_index()
+    
+    # Filter the DataFrame for Narmin Unstitched category
+    narmin_unstitched_df = df[df['Category'].str.contains("NARMIN UNSTITCHED", case=False, na=False)]
 
     # Display Side-by-Side
     col5, col6 = st.columns(2, gap='medium')
@@ -155,7 +164,147 @@ else:
     with col5:
         st.subheader("Top 10 Products by Revenue")
         st.dataframe(top_10_products)
-
+        
     with col6:
-        st.subheader("Top 5 Branches by Sales")
-        st.dataframe(top_5_branches)
+        st.subheader("Top 10 Narmin Unstitched Products")
+        
+        # Group and sort
+        top_10_narmin = (
+            narmin_unstitched_df
+            .groupby('Product Name')[['SOLD QTY', 'Total Sales']]
+            .sum()
+            .sort_values(by='Total Sales', ascending=False)
+            .head(10)
+            .reset_index()
+        )
+
+        # Show table
+        st.dataframe(
+            top_10_narmin,
+            column_order=["Product Name", "SOLD QTY", "Total Sales"],
+            hide_index=True,
+            column_config={
+                "Product Name": st.column_config.TextColumn("Product"),
+                "SOLD QTY": st.column_config.NumberColumn("Quantity", format="%d"),
+                "Total Sales": st.column_config.NumberColumn("Amount"   ),
+            },
+            use_container_width=True
+        )
+        
+    # Filter the DataFrame for Narmin Unstitched category
+    narmin_unstitched_df = df[df['Category'].str.contains("NARMIN UNSTITCHED", case=False, na=False)]
+    narmin_stitched_df = df[df['Category'].str.contains("NARMIN STITCHED", case=False, na=False)]
+
+    # Display Side-by-Side
+    col7, col8 = st.columns(2, gap='medium')
+
+    with col7:
+        st.subheader("Top 10 Narmin Unstitched Products")
+        
+        # Group and sort
+        top_10_narmin = (
+            narmin_unstitched_df
+            .groupby('Product Name')[['SOLD QTY', 'Total Sales']]
+            .sum()
+            .sort_values(by='Total Sales', ascending=False)
+            .head(10)
+            .reset_index()
+        )
+
+        # Show table
+        st.dataframe(
+            top_10_narmin,
+            column_order=["Product Name", "SOLD QTY", "Total Sales"],
+            hide_index=True,
+            column_config={
+                "Product Name": st.column_config.TextColumn("Product"),
+                "SOLD QTY": st.column_config.NumberColumn("Quantity", format="%d"),
+                "Total Sales": st.column_config.NumberColumn("Amount"   ),
+            },
+            use_container_width=True
+        )
+        
+    with col8:
+        st.subheader("Top 10 Narmin Stitched Products")
+        
+        # Group and sort
+        top_10_narmin = (
+            narmin_stitched_df
+            .groupby('Product Name')[['SOLD QTY', 'Total Sales']]
+            .sum()
+            .sort_values(by='Total Sales', ascending=False)
+            .head(10)
+            .reset_index()
+        )
+
+        # Show table
+        st.dataframe(
+            top_10_narmin,
+            column_order=["Product Name", "SOLD QTY", "Total Sales"],
+            hide_index=True,
+            column_config={
+                "Product Name": st.column_config.TextColumn("Product"),
+                "SOLD QTY": st.column_config.NumberColumn("Quantity", format="%d"),
+                "Total Sales": st.column_config.NumberColumn("Amount"   ),
+            },
+            use_container_width=True
+        )
+        
+        # Filter the DataFrame for Narmin Unstitched category
+    cotton_df = df[df['Category'].str.contains("COTTON", case=False, na=False)]
+    blended_df = df[df['Category'].str.contains("BLENDED", case=False, na=False)]
+
+    # Display Side-by-Side
+    col9, col10 = st.columns(2, gap='medium')
+
+    with col9:
+        st.subheader("Top 10 Cotton Products")
+        
+        # Group and sort
+        top_10_narmin = (
+            cotton_df
+            .groupby('Product Name')[['SOLD QTY', 'Total Sales']]
+            .sum()
+            .sort_values(by='Total Sales', ascending=False)
+            .head(10)
+            .reset_index()
+        )
+
+        # Show table
+        st.dataframe(
+            top_10_narmin,
+            column_order=["Product Name", "SOLD QTY", "Total Sales"],
+            hide_index=True,
+            column_config={
+                "Product Name": st.column_config.TextColumn("Product"),
+                "SOLD QTY": st.column_config.NumberColumn("Quantity", format="%d"),
+                "Total Sales": st.column_config.NumberColumn("Amount"   ),
+            },
+            use_container_width=True
+        )
+        
+    with col10:
+        st.subheader("Top 10 Blended Products")
+        
+        # Group and sort
+        top_10_narmin = (
+            blended_df
+            .groupby('Product Name')[['SOLD QTY', 'Total Sales']]
+            .sum()
+            .sort_values(by='Total Sales', ascending=False)
+            .head(10)
+            .reset_index()
+        )
+
+        # Show table
+        st.dataframe(
+            top_10_narmin,
+            column_order=["Product Name", "SOLD QTY", "Total Sales"],
+            hide_index=True,
+            column_config={
+                "Product Name": st.column_config.TextColumn("Product"),
+                "SOLD QTY": st.column_config.NumberColumn("Quantity", format="%d"),
+                "Total Sales": st.column_config.NumberColumn("Amount"   ),
+            },
+            use_container_width=True
+        )
