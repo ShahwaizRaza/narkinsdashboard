@@ -79,6 +79,17 @@ div[data-testid="stDataFrame"] .st-emotion-cache-1dp5vir {
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
 
+/* Hide top right buttons: Share, GitHub, Edit */
+[data-testid="stToolbar"],
+[data-testid="stDecoration"],
+header, footer {
+    visibility: hidden !important;
+}
+
+/* Hide "Manage app" sidebar */
+[data-testid="stSidebarNav"] {
+    display: none !important;
+}
 </style>
 
 """, unsafe_allow_html=True)
