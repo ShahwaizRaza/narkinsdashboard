@@ -203,8 +203,8 @@ else:
         )
         
     # Filter the DataFrame for Narmin Unstitched category
-    narmin_unstitched_df = df[df['Category'].str.contains("NARMIN UNSTITCHED", case=False, na=False)]
     narmin_stitched_df = df[df['Category'].str.contains("NARMIN STITCHED", case=False, na=False)]
+    cotton_df = df[df['Category'].str.contains("COTTON", case=False, na=False)]
 
     # Display Side-by-Side
     col7, col8 = st.columns(2, gap='medium')
@@ -214,7 +214,7 @@ else:
         
         # Group and sort
         top_10_narmin = (
-            narmin_unstitched_df
+            narmin_stitched_df
             .groupby('Product Name')[['SOLD QTY', 'Total Sales']]
             .sum()
             .sort_values(by='Total Sales', ascending=False)
@@ -240,7 +240,7 @@ else:
         
         # Group and sort
         top_10_narmin = (
-            narmin_stitched_df
+            cotton_df
             .groupby('Product Name')[['SOLD QTY', 'Total Sales']]
             .sum()
             .sort_values(by='Total Sales', ascending=False)
@@ -262,8 +262,8 @@ else:
         )
         
         # Filter the DataFrame for Narmin Unstitched category
-    cotton_df = df[df['Category'].str.contains("COTTON", case=False, na=False)]
     blended_df = df[df['Category'].str.contains("BLENDED", case=False, na=False)]
+    winter_df = df[df['Category'].str.contains("WINTER", case=False, na=False)]
 
     # Display Side-by-Side
     col9, col10 = st.columns(2, gap='medium')
@@ -273,7 +273,7 @@ else:
         
         # Group and sort
         top_10_narmin = (
-            cotton_df
+            blended_df
             .groupby('Product Name')[['SOLD QTY', 'Total Sales']]
             .sum()
             .sort_values(by='Total Sales', ascending=False)
@@ -299,7 +299,7 @@ else:
         
         # Group and sort
         top_10_narmin = (
-            blended_df
+            winter_df
             .groupby('Product Name')[['SOLD QTY', 'Total Sales']]
             .sum()
             .sort_values(by='Total Sales', ascending=False)
@@ -319,3 +319,4 @@ else:
             },
             use_container_width=True
         )
+
