@@ -210,7 +210,7 @@ else:
     col7, col8 = st.columns(2, gap='medium')
 
     with col7:
-        st.subheader("Top 10 Narmin Unstitched Products")
+        st.subheader("Top 10 Narmin Stitched Products")
         
         # Group and sort
         top_10_narmin = (
@@ -236,7 +236,7 @@ else:
         )
         
     with col8:
-        st.subheader("Top 10 Narmin Stitched Products")
+        st.subheader("Top 10 Cotton Products")
         
         # Group and sort
         top_10_narmin = (
@@ -269,7 +269,7 @@ else:
     col9, col10 = st.columns(2, gap='medium')
 
     with col9:
-        st.subheader("Top 10 Cotton Products")
+        st.subheader("Top 10 Blended Products")
         
         # Group and sort
         top_10_narmin = (
@@ -295,7 +295,7 @@ else:
         )
         
     with col10:
-        st.subheader("Top 10 Blended Products")
+        st.subheader("Top 10 Winter Products")
         
         # Group and sort
         top_10_narmin = (
@@ -319,4 +319,5 @@ else:
             },
             use_container_width=True
         )
+
 
