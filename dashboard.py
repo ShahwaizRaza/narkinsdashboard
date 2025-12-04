@@ -163,8 +163,21 @@ else:
         st.subheader("Monthly Category Sale")
         st.dataframe(sales_by_category)
     
-    # Top 10 Products by Revenue
-    top_10_products = df.groupby('Product Name')['Total Sales'].sum().sort_values(ascending=False).head(10).reset_index()
+    # Top 10 Products by Revenue (PRODUCT only)
+    df["Main Product"] = (
+        df["Product Name"].astype(str)
+        .str.split("|")
+        .str[0]
+        .str.strip()
+    )
+
+    top_10_products = (
+        df.groupby("Main Product")["Total Sales"]
+        .sum()
+        .sort_values(ascending=False)
+        .head(10)
+        .reset_index()
+    )
     
     # Filter the DataFrame for Narmin Unstitched category
     narmin_unstitched_df = df[df['Category'].str.contains("NARMIN UNSTITCHED", case=False, na=False)]
@@ -177,14 +190,23 @@ else:
         st.dataframe(top_10_products)
         
     with col6:
-        st.subheader("Top 10 Narmin Unstitched Products")
-        
-        # Group and sort
+        st.subheader("Top 10 Narmin Unstitched (Product Only)")
+
+        # Extract product only
+        narmin_unstitched_df["Product"] = (
+            narmin_unstitched_df["Product Name"]
+            .astype(str)
+            .str.split("|")
+            .str[0]
+            .str.strip()
+        )
+
+        # Group and sort by Main Product
         top_10_narmin = (
             narmin_unstitched_df
-            .groupby('Product Name')[['SOLD QTY', 'Total Sales']]
+            .groupby("Product")[["SOLD QTY", "Total Sales"]]
             .sum()
-            .sort_values(by='Total Sales', ascending=False)
+            .sort_values(by="Total Sales", ascending=False)
             .head(10)
             .reset_index()
         )
@@ -192,12 +214,12 @@ else:
         # Show table
         st.dataframe(
             top_10_narmin,
-            column_order=["Product Name", "SOLD QTY", "Total Sales"],
+            column_order=["Product", "SOLD QTY", "Total Sales"],
             hide_index=True,
             column_config={
-                "Product Name": st.column_config.TextColumn("Product"),
+                "Main Product": st.column_config.TextColumn("Product"),
                 "SOLD QTY": st.column_config.NumberColumn("Quantity", format="%d"),
-                "Total Sales": st.column_config.NumberColumn("Amount"   ),
+                "Total Sales": st.column_config.NumberColumn("Amount"),
             },
             use_container_width=True
         )
@@ -210,14 +232,23 @@ else:
     col7, col8 = st.columns(2, gap='medium')
 
     with col7:
-        st.subheader("Top 10 Narmin Stitched Products")
-        
+        st.subheader("Top 10 Narmin Stitched (Product Only)")
+
+        # Extract product only
+        narmin_stitched_df["Main Product"] = (
+            narmin_stitched_df["Product Name"]
+            .astype(str)
+            .str.split("|")
+            .str[0]
+            .str.strip()
+        )
+
         # Group and sort
         top_10_narmin = (
             narmin_stitched_df
-            .groupby('Product Name')[['SOLD QTY', 'Total Sales']]
+            .groupby("Main Product")[["SOLD QTY", "Total Sales"]]
             .sum()
-            .sort_values(by='Total Sales', ascending=False)
+            .sort_values(by="Total Sales", ascending=False)
             .head(10)
             .reset_index()
         )
@@ -225,12 +256,12 @@ else:
         # Show table
         st.dataframe(
             top_10_narmin,
-            column_order=["Product Name", "SOLD QTY", "Total Sales"],
+            column_order=["Main Product", "SOLD QTY", "Total Sales"],
             hide_index=True,
             column_config={
-                "Product Name": st.column_config.TextColumn("Product"),
+                "Main Product": st.column_config.TextColumn("Product"),
                 "SOLD QTY": st.column_config.NumberColumn("Quantity", format="%d"),
-                "Total Sales": st.column_config.NumberColumn("Amount"   ),
+                "Total Sales": st.column_config.NumberColumn("Amount"),
             },
             use_container_width=True
         )
@@ -238,8 +269,17 @@ else:
     with col8:
         st.subheader("Top 10 Cotton Products")
         
+        # Extract product only
+        cotton_df["Product Name"] = (
+            cotton_df["Product Name"]
+            .astype(str)
+            .str.split("|")
+            .str[0]
+            .str.strip()
+        )
+        
         # Group and sort
-        top_10_narmin = (
+        top_10_cotton = (
             cotton_df
             .groupby('Product Name')[['SOLD QTY', 'Total Sales']]
             .sum()
@@ -250,7 +290,7 @@ else:
 
         # Show table
         st.dataframe(
-            top_10_narmin,
+            top_10_cotton,
             column_order=["Product Name", "SOLD QTY", "Total Sales"],
             hide_index=True,
             column_config={
@@ -271,8 +311,17 @@ else:
     with col9:
         st.subheader("Top 10 Blended Products")
         
+        # Extract product only
+        blended_df["Product Name"] = (
+            blended_df["Product Name"]
+            .astype(str)
+            .str.split("|")
+            .str[0]
+            .str.strip()
+        )
+        
         # Group and sort
-        top_10_narmin = (
+        top_10_blended = (
             blended_df
             .groupby('Product Name')[['SOLD QTY', 'Total Sales']]
             .sum()
@@ -283,7 +332,7 @@ else:
 
         # Show table
         st.dataframe(
-            top_10_narmin,
+            top_10_blended,
             column_order=["Product Name", "SOLD QTY", "Total Sales"],
             hide_index=True,
             column_config={
@@ -297,8 +346,17 @@ else:
     with col10:
         st.subheader("Top 10 Winter Products")
         
+        # Extract product only
+        winter_df["Product Name"] = (
+            winter_df["Product Name"]
+            .astype(str)
+            .str.split("|")
+            .str[0]
+            .str.strip()
+        )
+        
         # Group and sort
-        top_10_narmin = (
+        top_10_winter = (
             winter_df
             .groupby('Product Name')[['SOLD QTY', 'Total Sales']]
             .sum()
@@ -309,7 +367,7 @@ else:
 
         # Show table
         st.dataframe(
-            top_10_narmin,
+            top_10_winter,
             column_order=["Product Name", "SOLD QTY", "Total Sales"],
             hide_index=True,
             column_config={
@@ -319,5 +377,4 @@ else:
             },
             use_container_width=True
         )
-
 
