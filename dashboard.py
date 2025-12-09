@@ -167,7 +167,7 @@ else:
 
     st.subheader("📦 Today's All Products (Qty & Amount)")
 
-    # Extract only Product Name (before |)
+    # Extract Main Product (remove | COLOR | SIZE)
     df["Main Product"] = (
         df["Product Name"]
         .astype(str)
@@ -179,7 +179,7 @@ else:
     # Filter today's data
     today_data = df[df["Date"] == today]
 
-    # Group all products
+    # Group all products for today
     all_today_products = (
         today_data
         .groupby("Main Product")[["SOLD QTY", "Total Sales"]]
@@ -188,10 +188,10 @@ else:
         .reset_index()
     )
 
-    # Scrollable table container
+    # Scrollable table (400px height)
     st.dataframe(
         all_today_products,
-        height=400,   # scroll height
+        height=400,
         use_container_width=True,
         hide_index=True,
         column_config={
