@@ -162,6 +162,44 @@ else:
     with col4:
         st.subheader("Monthly Category Sale")
         st.dataframe(sales_by_category)
+        
+    # ---- TODAY'S ALL PRODUCTS (SCROLLABLE) ----
+
+    st.subheader("📦 Today's All Products (Qty & Amount)")
+
+    # Extract only Product Name (before |)
+    df["Main Product"] = (
+        df["Product Name"]
+        .astype(str)
+        .str.split("|")
+        .str[0]
+        .str.strip()
+    )
+
+    # Filter today's data
+    today_data = df[df["Date"] == today]
+
+    # Group all products
+    all_today_products = (
+        today_data
+        .groupby("Main Product")[["SOLD QTY", "Total Sales"]]
+        .sum()
+        .sort_values(by="Total Sales", ascending=False)
+        .reset_index()
+    )
+
+    # Scrollable table container
+    st.dataframe(
+        all_today_products,
+        height=400,   # scroll height
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Main Product": st.column_config.TextColumn("Product"),
+            "SOLD QTY": st.column_config.NumberColumn("Qty", format="%d"),
+            "Total Sales": st.column_config.NumberColumn("Amount"),
+        }
+    )
     
     # Top 10 Products by Revenue (PRODUCT only)
     df["Main Product"] = (
