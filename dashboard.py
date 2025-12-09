@@ -5,13 +5,15 @@ import plotly.express as px
 import plotly.graph_objects as go
 import time
 
-
-# Set Streamlit page config
+# Page config
 st.set_page_config(page_title="Retail Sales Dashboard", layout="wide", initial_sidebar_state='collapsed')
 
 st.title("📊 Narkins / Narmin Monthly Sales Dashboard")
 
-# Fetch data
+
+# ----------------------------------------------------
+# FETCH DATA
+# ----------------------------------------------------
 fetch_api_data("ProductDateWiseSale")
 
 def get_sales_dataframe():
@@ -23,396 +25,280 @@ def get_sales_dataframe():
         return df
     return pd.DataFrame()
 
-if st.button("🔄 Refresh Now"):
-    fetch_api_data("ProductDateWiseSale")  # Fetch fresh data
-    st.cache_data.clear()  # Clear the cache so it re-runs the function
-    st.rerun()  # Reload the script with updated data
-    get_sales_dataframe()
 
+# Refresh button
+if st.button("🔄 Refresh Now"):
+    fetch_api_data("ProductDateWiseSale")
+    st.cache_data.clear()
+    st.rerun()
 
 df = get_sales_dataframe()
 
 
-#######################
-# CSS styling
+# ----------------------------------------------------
+# GLOBAL CSS FIX (NO COLUMN JUMP)
+# ----------------------------------------------------
 st.markdown("""
 <style>
-        
+
+/* ----- FIX COLUMN JUMP ----- */
+div[data-testid="stDataFrame"] table {
+    table-layout: fixed !important;
+    width: 100% !important;
+}
+
+div[data-testid="stDataFrame"] th div {
+    pointer-events: none !important;   /* Disable header click resizing */
+}
+
+/* Sticky header */
+div[data-testid="stDataFrame"] th {
+    position: sticky !important;
+    top: 0;
+    z-index: 3 !important;
+    background-color: #f1f1f1 !important;
+}
+
+/* Fix scroll area height */
+div[data-testid="stDataFrame"] > div {
+    height: 400px !important;
+    overflow: auto !important;
+}
+
+/* KPI Boxes */
 [data-testid="stMetric"] {
     background-image: linear-gradient(to right, #0077C2 , #59a5f5);
-    padding-top: 1.5rem;
-    padding-bottom: 1.5rem;
-    padding-left: 1.5rem;
+    padding: 1.5rem;
     border-radius: .75rem;
 }
 
-[data-testid="stMetricLabel"] {
+[data-testid="stMetricLabel"], [data-testid="stMetricValue"] {
   font-size: 3rem;
-  line-height: 1;
   color: white;
   font-weight: 500;
 }
 
-[data-testid="stMetricValue"] {
-  font-size: 3rem;
-  line-height: 1;
-  color: white;
-  font-weight: 500;
-}
-
-div[data-testid="stDataFrame"] .st-emotion-cache-1p5d0ke {
-    background-color: #0077C2 !important;  /* Your desired fill color */
-}
-
-/* Optional: Change background track color */
-div[data-testid="stDataFrame"] .st-emotion-cache-1dp5vir {
-    background-color: #f0f0f0 !important;  /* Lighter track */
-}
-
-/* Hide the top-right icons and manage app button */
-[data-testid="stDecoration"],   /* top-right buttons like Share, GitHub */
-[data-testid="stSidebarNav"] {  /* "Manage app" button */
-    display: none !important;
-}
-
-/* Optional: hide Streamlit menu */
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
-
-/* Hide top right buttons: Share, GitHub, Edit */
-[data-testid="stToolbar"],
-[data-testid="stDecoration"],
-header, footer {
+/* Hide Streamlit UI buttons */
+[data-testid="stToolbar"], [data-testid="stDecoration"], header, footer {
     visibility: hidden !important;
 }
 
-/* Hide "Manage app" sidebar */
-[data-testid="stSidebarNav"] {
-    display: none !important;
-}
 </style>
-
 """, unsafe_allow_html=True)
 
 
+
+# ----------------------------------------------------
+# IF NO DATA
+# ----------------------------------------------------
 if df.empty:
-    st.warning("No data available to display.")
-else:
-    # KPI Calculations (No filtering)
-    today = pd.Timestamp.today().normalize()
-    df['Date'] = pd.to_datetime(df['Date']).dt.normalize()
+    st.warning("No data available.")
+    st.stop()
 
-    today_sales = df[df['Date'] == today]['Total Sales'].sum()
-    today_units = df[df['Date'] == today]['SOLD QTY'].sum()
-    month_sales = df[df['Date'].dt.month == today.month]['Total Sales'].sum()
-    total_units = df['SOLD QTY'].sum()
-    
-    col1, col2, col3, col4= st.columns(4, gap='medium')
-    col1.metric("Today's Sales", f"{today_sales:,.0f}")
-    col2.metric("Today's Units Sold", f"{today_units:,}")
-    col3.metric("Monthly Sales", f"{month_sales:,.0f}")
-    col4.metric("Total Units Sold", f"{total_units:,}")
-    
-    # Aggregations
-    today_sales_by_branch = (
-        df[df['Date'] == today]
-        .groupby('Branch')[['SOLD QTY', 'Total Sales']]
-        .sum()
-        .sort_values(by='Total Sales', ascending=False)
-        .reset_index()
-    )
-    
-    # Aggregations
-    today_sales_by_category = (
-        df[df['Date'] == today]
-        .groupby('Category')[['SOLD QTY', 'Total Sales']]
-        .sum()
-        .sort_values(by='Total Sales', ascending=False)
-        .reset_index()
-    )
-    
-    sales_by_branch = (
-        df.groupby('Branch')[['SOLD QTY', 'Total Sales']]
-        .sum()
-        .sort_values(by='Total Sales', ascending=False)
-        .reset_index()
-    )
-    
-    sales_by_category = (
-        df.groupby('Category')[['SOLD QTY', 'Total Sales']]
-        .sum()
-        .sort_values(by='Total Sales', ascending=False)
-        .reset_index()
-    )
 
-    # Create columns for side by side layout
-    col1, col2, col3, col4 = st.columns(4, gap='medium')
-    
-    
-        
-    with col1:
-        st.subheader("📌 Today's Sale")
-        st.dataframe(today_sales_by_branch)
-    with col2:
-        st.subheader("Today's Category Sale")
-        st.dataframe(today_sales_by_category)
-    with col3:
-        st.subheader("Monthly Sale")
-        st.dataframe(sales_by_branch)
-    with col4:
-        st.subheader("Monthly Category Sale")
-        st.dataframe(sales_by_category)
-        
-    # ---- TODAY'S ALL PRODUCTS (SCROLLABLE) ----
+# ----------------------------------------------------
+# KPI CALCULATIONS
+# ----------------------------------------------------
+today = pd.Timestamp.today().normalize()
+df['Date'] = df['Date'].dt.normalize()
 
-    st.subheader("📦 Today's All Products (Qty & Amount)")
+today_sales = df[df['Date'] == today]['Total Sales'].sum()
+today_units = df[df['Date'] == today]['SOLD QTY'].sum()
+month_sales = df[df['Date'].dt.month == today.month]['Total Sales'].sum()
+total_units = df['SOLD QTY'].sum()
 
-    # Extract Main Product (remove | COLOR | SIZE)
-    df["Main Product"] = (
-        df["Product Name"]
-        .astype(str)
-        .str.split("|")
-        .str[0]
-        .str.strip()
-    )
+col1, col2, col3, col4 = st.columns(4, gap='medium')
+col1.metric("Today's Sales", f"{today_sales:,.0f}")
+col2.metric("Today's Units Sold", f"{today_units:,}")
+col3.metric("Monthly Sales", f"{month_sales:,.0f}")
+col4.metric("Total Units Sold", f"{total_units:,}")
 
-    # Filter today's data
-    today_data = df[df["Date"] == today]
 
-    # Group all products for today
-    all_today_products = (
-        today_data
-        .groupby("Main Product")[["SOLD QTY", "Total Sales"]]
+# ----------------------------------------------------
+# GROUPING
+# ----------------------------------------------------
+today_sales_by_branch = (
+    df[df['Date'] == today]
+    .groupby('Branch')[['SOLD QTY', 'Total Sales']]
+    .sum()
+    .sort_values(by='Total Sales', ascending=False)
+    .reset_index()
+)
+
+today_sales_by_category = (
+    df[df['Date'] == today]
+    .groupby('Category')[['SOLD QTY', 'Total Sales']]
+    .sum()
+    .sort_values(by='Total Sales', ascending=False)
+    .reset_index()
+)
+
+sales_by_branch = (
+    df.groupby('Branch')[['SOLD QTY', 'Total Sales']]
+    .sum()
+    .sort_values(by='Total Sales', ascending=False)
+    .reset_index()
+)
+
+sales_by_category = (
+    df.groupby('Category')[['SOLD QTY', 'Total Sales']]
+    .sum()
+    .sort_values(by='Total Sales', ascending=False)
+    .reset_index()
+)
+
+
+# ----------------------------------------------------
+# LAYOUT 4 BOXES
+# ----------------------------------------------------
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+    st.subheader("📌 Today's Sale")
+    st.dataframe(today_sales_by_branch, height=400, use_container_width=True)
+
+with col2:
+    st.subheader("Today's Category Sale")
+    st.dataframe(today_sales_by_category, height=400, use_container_width=True)
+
+with col3:
+    st.subheader("Monthly Sale")
+    st.dataframe(sales_by_branch, height=400, use_container_width=True)
+
+with col4:
+    st.subheader("Monthly Category Sale")
+    st.dataframe(sales_by_category, height=400, use_container_width=True)
+
+
+# ----------------------------------------------------
+# TODAY'S ALL PRODUCTS SCROLLABLE
+# ----------------------------------------------------
+st.subheader("📦 Today's All Products")
+
+df["Main Product"] = (
+    df["Product Name"].astype(str).str.split("|").str[0].str.strip()
+)
+
+today_data = df[df["Date"] == today]
+
+all_today_products = (
+    today_data
+    .groupby("Main Product")[["SOLD QTY", "Total Sales"]]
+    .sum()
+    .sort_values(by="Total Sales", ascending=False)
+    .reset_index()
+)
+
+st.dataframe(
+    all_today_products,
+    height=400,
+    use_container_width=True,
+    hide_index=True
+)
+
+
+# ----------------------------------------------------
+# TOP 10 MAIN PRODUCTS
+# ----------------------------------------------------
+top_10_products = (
+    df.groupby("Main Product")["Total Sales"]
+    .sum()
+    .sort_values(ascending=False)
+    .head(10)
+    .reset_index()
+)
+
+col5, col6 = st.columns(2)
+
+with col5:
+    st.subheader("Top 10 Products (Revenue)")
+    st.dataframe(top_10_products, height=400, use_container_width=True)
+
+
+# ----------------------------------------------------
+# TOP 10 NARMIN UNSTITCHED
+# ----------------------------------------------------
+narmin_un = df[df['Category'].str.contains("NARMIN UNSTITCHED", case=False, na=False)]
+narmin_un["Product"] = narmin_un["Product Name"].str.split("|").str[0].str.strip()
+
+top_10_nu = (
+    narmin_un.groupby("Product")[["SOLD QTY", "Total Sales"]]
+    .sum()
+    .sort_values(by="Total Sales", ascending=False)
+    .head(10)
+    .reset_index()
+)
+
+with col6:
+    st.subheader("Top 10 Narmin Unstitched")
+    st.dataframe(top_10_nu, height=400, use_container_width=True)
+
+
+# ----------------------------------------------------
+# MORE CATEGORY TABLES
+# ----------------------------------------------------
+narmin_stitched = df[df['Category'].str.contains("NARMIN STITCHED", case=False, na=False)]
+cotton = df[df['Category'].str.contains("COTTON", case=False, na=False)]
+
+col7, col8 = st.columns(2)
+
+with col7:
+    st.subheader("Top 10 Narmin Stitched")
+    narmin_stitched["Main Product"] = narmin_stitched["Product Name"].str.split("|").str[0].str.strip()
+
+    top_10_ns = (
+        narmin_stitched.groupby("Main Product")[["SOLD QTY", "Total Sales"]]
         .sum()
         .sort_values(by="Total Sales", ascending=False)
-        .reset_index()
-    )
-
-    # Scrollable table (400px height)
-    st.dataframe(
-        all_today_products,
-        height=400,
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            "Main Product": st.column_config.TextColumn("Product"),
-            "SOLD QTY": st.column_config.NumberColumn("Qty", format="%d"),
-            "Total Sales": st.column_config.NumberColumn("Amount"),
-        }
-    )
-    
-    # Top 10 Products by Revenue (PRODUCT only)
-    df["Main Product"] = (
-        df["Product Name"].astype(str)
-        .str.split("|")
-        .str[0]
-        .str.strip()
-    )
-
-    top_10_products = (
-        df.groupby("Main Product")["Total Sales"]
-        .sum()
-        .sort_values(ascending=False)
         .head(10)
         .reset_index()
     )
-    
-    # Filter the DataFrame for Narmin Unstitched category
-    narmin_unstitched_df = df[df['Category'].str.contains("NARMIN UNSTITCHED", case=False, na=False)]
+    st.dataframe(top_10_ns, height=400, use_container_width=True)
 
-    # Display Side-by-Side
-    col5, col6 = st.columns(2, gap='medium')
+with col8:
+    st.subheader("Top 10 Cotton")
+    cotton["Product Name"] = cotton["Product Name"].str.split("|").str[0].str.strip()
 
-    with col5:
-        st.subheader("Top 10 Products by Revenue")
-        st.dataframe(top_10_products)
-        
-    with col6:
-        st.subheader("Top 10 Narmin Unstitched (Product Only)")
+    top_10_cotton = (
+        cotton.groupby("Product Name")[["SOLD QTY", "Total Sales"]]
+        .sum()
+        .sort_values(by="Total Sales", ascending=False)
+        .head(10)
+        .reset_index()
+    )
+    st.dataframe(top_10_cotton, height=400, use_container_width=True)
 
-        # Extract product only
-        narmin_unstitched_df["Product"] = (
-            narmin_unstitched_df["Product Name"]
-            .astype(str)
-            .str.split("|")
-            .str[0]
-            .str.strip()
-        )
 
-        # Group and sort by Main Product
-        top_10_narmin = (
-            narmin_unstitched_df
-            .groupby("Product")[["SOLD QTY", "Total Sales"]]
-            .sum()
-            .sort_values(by="Total Sales", ascending=False)
-            .head(10)
-            .reset_index()
-        )
+# ----------------------------------------------------
+# BLENDED + WINTER
+# ----------------------------------------------------
+blended = df[df['Category'].str.contains("BLENDED", case=False, na=False)]
+winter = df[df['Category'].str.contains("WINTER", case=False, na=False)]
 
-        # Show table
-        st.dataframe(
-            top_10_narmin,
-            column_order=["Product", "SOLD QTY", "Total Sales"],
-            hide_index=True,
-            column_config={
-                "Main Product": st.column_config.TextColumn("Product"),
-                "SOLD QTY": st.column_config.NumberColumn("Quantity", format="%d"),
-                "Total Sales": st.column_config.NumberColumn("Amount"),
-            },
-            use_container_width=True
-        )
-        
-    # Filter the DataFrame for Narmin Unstitched category
-    narmin_stitched_df = df[df['Category'].str.contains("NARMIN STITCHED", case=False, na=False)]
-    cotton_df = df[df['Category'].str.contains("COTTON", case=False, na=False)]
+col9, col10 = st.columns(2)
 
-    # Display Side-by-Side
-    col7, col8 = st.columns(2, gap='medium')
+with col9:
+    st.subheader("Top 10 Blended")
+    blended["Product Name"] = blended["Product Name"].str.split("|").str[0].str.strip()
 
-    with col7:
-        st.subheader("Top 10 Narmin Stitched (Product Only)")
+    top_10_blend = (
+        blended.groupby("Product Name")[["SOLD QTY", "Total Sales"]]
+        .sum()
+        .sort_values(by="Total Sales", ascending=False)
+        .head(10)
+        .reset_index()
+    )
+    st.dataframe(top_10_blend, height=400, use_container_width=True)
 
-        # Extract product only
-        narmin_stitched_df["Main Product"] = (
-            narmin_stitched_df["Product Name"]
-            .astype(str)
-            .str.split("|")
-            .str[0]
-            .str.strip()
-        )
+with col10:
+    st.subheader("Top 10 Winter")
+    winter["Product Name"] = winter["Product Name"].str.split("|").str[0].str.strip()
 
-        # Group and sort
-        top_10_narmin = (
-            narmin_stitched_df
-            .groupby("Main Product")[["SOLD QTY", "Total Sales"]]
-            .sum()
-            .sort_values(by="Total Sales", ascending=False)
-            .head(10)
-            .reset_index()
-        )
-
-        # Show table
-        st.dataframe(
-            top_10_narmin,
-            column_order=["Main Product", "SOLD QTY", "Total Sales"],
-            hide_index=True,
-            column_config={
-                "Main Product": st.column_config.TextColumn("Product"),
-                "SOLD QTY": st.column_config.NumberColumn("Quantity", format="%d"),
-                "Total Sales": st.column_config.NumberColumn("Amount"),
-            },
-            use_container_width=True
-        )
-        
-    with col8:
-        st.subheader("Top 10 Cotton Products")
-        
-        # Extract product only
-        cotton_df["Product Name"] = (
-            cotton_df["Product Name"]
-            .astype(str)
-            .str.split("|")
-            .str[0]
-            .str.strip()
-        )
-        
-        # Group and sort
-        top_10_cotton = (
-            cotton_df
-            .groupby('Product Name')[['SOLD QTY', 'Total Sales']]
-            .sum()
-            .sort_values(by='Total Sales', ascending=False)
-            .head(10)
-            .reset_index()
-        )
-
-        # Show table
-        st.dataframe(
-            top_10_cotton,
-            column_order=["Product Name", "SOLD QTY", "Total Sales"],
-            hide_index=True,
-            column_config={
-                "Product Name": st.column_config.TextColumn("Product"),
-                "SOLD QTY": st.column_config.NumberColumn("Quantity", format="%d"),
-                "Total Sales": st.column_config.NumberColumn("Amount"   ),
-            },
-            use_container_width=True
-        )
-        
-        # Filter the DataFrame for Narmin Unstitched category
-    blended_df = df[df['Category'].str.contains("BLENDED", case=False, na=False)]
-    winter_df = df[df['Category'].str.contains("WINTER", case=False, na=False)]
-
-    # Display Side-by-Side
-    col9, col10 = st.columns(2, gap='medium')
-
-    with col9:
-        st.subheader("Top 10 Blended Products")
-        
-        # Extract product only
-        blended_df["Product Name"] = (
-            blended_df["Product Name"]
-            .astype(str)
-            .str.split("|")
-            .str[0]
-            .str.strip()
-        )
-        
-        # Group and sort
-        top_10_blended = (
-            blended_df
-            .groupby('Product Name')[['SOLD QTY', 'Total Sales']]
-            .sum()
-            .sort_values(by='Total Sales', ascending=False)
-            .head(10)
-            .reset_index()
-        )
-
-        # Show table
-        st.dataframe(
-            top_10_blended,
-            column_order=["Product Name", "SOLD QTY", "Total Sales"],
-            hide_index=True,
-            column_config={
-                "Product Name": st.column_config.TextColumn("Product"),
-                "SOLD QTY": st.column_config.NumberColumn("Quantity", format="%d"),
-                "Total Sales": st.column_config.NumberColumn("Amount"   ),
-            },
-            use_container_width=True
-        )
-        
-    with col10:
-        st.subheader("Top 10 Winter Products")
-        
-        # Extract product only
-        winter_df["Product Name"] = (
-            winter_df["Product Name"]
-            .astype(str)
-            .str.split("|")
-            .str[0]
-            .str.strip()
-        )
-        
-        # Group and sort
-        top_10_winter = (
-            winter_df
-            .groupby('Product Name')[['SOLD QTY', 'Total Sales']]
-            .sum()
-            .sort_values(by='Total Sales', ascending=False)
-            .head(10)
-            .reset_index()
-        )
-
-        # Show table
-        st.dataframe(
-            top_10_winter,
-            column_order=["Product Name", "SOLD QTY", "Total Sales"],
-            hide_index=True,
-            column_config={
-                "Product Name": st.column_config.TextColumn("Product"),
-                "SOLD QTY": st.column_config.NumberColumn("Quantity", format="%d"),
-                "Total Sales": st.column_config.NumberColumn("Amount"   ),
-            },
-            use_container_width=True
-        )
-
+    top_10_winter = (
+        winter.groupby("Product Name")[["SOLD QTY", "Total Sales"]]
+        .sum()
+        .sort_values(by="Total Sales", ascending=False)
+        .head(10)
+        .reset_index()
+    )
+    st.dataframe(top_10_winter, height=400, use_container_width=True)
