@@ -140,6 +140,10 @@ sales_by_branch = (
     .reset_index()
 )
 
+# Calculate % contribution
+total_month = sales_by_branch["Total Sales"].sum()
+sales_by_branch["Contribution %"] = (sales_by_branch["Total Sales"] / total_month * 100).round(2)
+
 sales_by_category = (
     df.groupby('Category')[['SOLD QTY', 'Total Sales']]
     .sum()
@@ -147,6 +151,9 @@ sales_by_category = (
     .reset_index()
 )
 
+# Contribution calculation
+total_month_cat = sales_by_category["Total Sales"].sum()
+sales_by_category["Contribution %"] = (sales_by_category["Total Sales"] / total_month_cat * 100).round(2)
 
 # ----------------------------------------------------
 # LAYOUT 4 BOXES
@@ -163,11 +170,29 @@ with col2:
 
 with col3:
     st.subheader("Monthly Sale")
-    st.dataframe(sales_by_branch, height=400, use_container_width=True)
+    st.dataframe(
+        sales_by_branch,
+        hide_index=True,
+        column_config={
+            "Branch": st.column_config.TextColumn("Branch"),
+            "Total Sales": st.column_config.NumberColumn("Sale", format="%d"),
+            "Contribution %": st.column_config.NumberColumn("Contribution (%)"),
+        },
+        use_container_width=True
+    )
 
 with col4:
     st.subheader("Monthly Category Sale")
-    st.dataframe(sales_by_category, height=400, use_container_width=True)
+    st.dataframe(
+        sales_by_category,
+        hide_index=True,
+        column_config={
+            "CATEGORY": st.column_config.TextColumn("Category"),
+            "Total Sales": st.column_config.NumberColumn("Sale", format="%d"),
+            "Contribution %": st.column_config.NumberColumn("Contribution (%)"),
+        },
+        use_container_width=True
+    )
 
 
 # ----------------------------------------------------
