@@ -274,15 +274,15 @@ def get_category_top_10(df, category_name):
 # ----------------------------------------------------
 # LOAD DATA
 # ----------------------------------------------------
-if 'loaded' not in st.session_state:
-    with st.spinner("🔄 Loading dashboard..."):
-        fetch_api_data("ProductDateWiseSale")
-        st.session_state.loaded = True
+# Always fetch data first
+with st.spinner("🔄 Loading dashboard..."):
+    fetch_api_data("ProductDateWiseSale")
 
 df = load_data()
 
 if df is None or df.empty:
-    st.error("⚠️ No data available")
+    st.error("⚠️ No data available. Please check your data source.")
+    st.info(f"Debug: latest_data keys: {list(latest_data.keys()) if latest_data else 'No data'}")
     st.stop()
 
 # ----------------------------------------------------
@@ -293,8 +293,8 @@ with col1:
     st.title("📊 Narkins / Narmin Sales Dashboard")
 with col2:
     if st.button("🔄 Refresh", use_container_width=True):
-        st.cache_data.clear()
         fetch_api_data("ProductDateWiseSale")
+        st.cache_data.clear()
         st.rerun()
 
 # ----------------------------------------------------
