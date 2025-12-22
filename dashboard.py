@@ -12,12 +12,6 @@ st.set_page_config(
     initial_sidebar_state='collapsed'
 )
 
-loading_placeholder = st.empty()
-
-with loading_placeholder.container():
-    st.markdown("### 🔄 Loading sales data, please wait...")
-    st.progress(0)
-
 # ----------------------------------------------------
 # CLEAN & SIMPLE CSS
 # ----------------------------------------------------
@@ -495,4 +489,5 @@ with tab4:
 # ----------------------------------------------------
 st.divider()
 st.caption(f"Last Updated: {datetime.now().strftime('%Y-%m-%d %I:%M %p')} | Data cached for 10 minutes")
+
 
