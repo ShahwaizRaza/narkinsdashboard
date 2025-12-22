@@ -12,6 +12,12 @@ st.set_page_config(
     initial_sidebar_state='collapsed'
 )
 
+loading_placeholder = st.empty()
+
+with loading_placeholder.container():
+    st.markdown("### 🔄 Loading sales data, please wait...")
+    st.progress(0)
+
 # ----------------------------------------------------
 # CLEAN & SIMPLE CSS
 # ----------------------------------------------------
@@ -185,7 +191,7 @@ footer {
 # ----------------------------------------------------
 # FAST DATA LOADING
 # ----------------------------------------------------
-@st.cache_data(ttl=600, show_spinner=False)
+@st.cache_data(ttl=600)
 def load_base_data():
     """Load raw data only"""
     report_type = "ProductDateWiseSale"
@@ -201,8 +207,9 @@ def load_base_data():
 # ----------------------------------------------------
 # LOAD DATA IMMEDIATELY
 # ----------------------------------------------------
-fetch_api_data("ProductDateWiseSale")
-df = load_base_data()
+with st.spinner("Fetching sales data..."):
+    fetch_api_data("ProductDateWiseSale")
+    df = load_base_data()
 
 # ----------------------------------------------------
 # HEADER
@@ -488,3 +495,4 @@ with tab4:
 # ----------------------------------------------------
 st.divider()
 st.caption(f"Last Updated: {datetime.now().strftime('%Y-%m-%d %I:%M %p')} | Data cached for 10 minutes")
+
