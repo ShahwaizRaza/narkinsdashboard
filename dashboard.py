@@ -13,6 +13,16 @@ st.set_page_config(
 )
 
 # ----------------------------------------------------
+# GLOBAL LOADING SCREEN
+# ----------------------------------------------------
+loading = st.empty()
+
+with loading.container():
+    st.markdown("## 🔄 Loading Sales Dashboard")
+    st.markdown("Please wait while data is being prepared...")
+    st.progress(30)
+
+# ----------------------------------------------------
 # CLEAN & SIMPLE CSS
 # ----------------------------------------------------
 st.markdown("""
@@ -223,6 +233,7 @@ with col2:
 if df.empty:
     st.error("No data available. Please check your data source.")
     st.stop()
+loading.empty()
 
 # ----------------------------------------------------
 # CHUNK 1: KPI METRICS (LOAD FIRST)
@@ -489,5 +500,6 @@ with tab4:
 # ----------------------------------------------------
 st.divider()
 st.caption(f"Last Updated: {datetime.now().strftime('%Y-%m-%d %I:%M %p')} | Data cached for 10 minutes")
+
 
 
