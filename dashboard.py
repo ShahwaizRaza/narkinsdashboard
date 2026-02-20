@@ -299,7 +299,7 @@ with col8:
 # ----------------------------------------------------
 blended = df[df['Category'].str.contains("BLENDED", case=False, na=False)]
 
-col9, col10 = st.columns(1)
+col9 = st.columns(1)
 
 with col9:
     st.subheader("Top 10 Blended")
@@ -313,3 +313,4 @@ with col9:
         .reset_index()
     )
     st.dataframe(top_10_blend, height=400, use_container_width=True)
+
