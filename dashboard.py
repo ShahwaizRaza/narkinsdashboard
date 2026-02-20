@@ -196,6 +196,33 @@ with col4:
 
 
 # ----------------------------------------------------
+# TODAY'S ALL PRODUCTS SCROLLABLE
+# ----------------------------------------------------
+st.subheader("📦 Today's All Products")
+
+df["Main Product"] = (
+    df["Product Name"].astype(str).str.split("|").str[0].str.strip()
+)
+
+today_data = df[df["Date"] == today]
+
+all_today_products = (
+    today_data
+    .groupby("Main Product")[["SOLD QTY", "Total Sales"]]
+    .sum()
+    .sort_values(by="Total Sales", ascending=False)
+    .reset_index()
+)
+
+st.dataframe(
+    all_today_products,
+    height=400,
+    use_container_width=True,
+    hide_index=True
+)
+
+
+# ----------------------------------------------------
 # TOP 10 MAIN PRODUCTS
 # ----------------------------------------------------
 top_10_products = (
@@ -272,7 +299,7 @@ with col8:
 # ----------------------------------------------------
 blended = df[df['Category'].str.contains("BLENDED", case=False, na=False)]
 
-col9 = st.columns(1)
+col9, col10 = st.columns(1)
 
 with col9:
     st.subheader("Top 10 Blended")
