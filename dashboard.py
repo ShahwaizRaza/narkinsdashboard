@@ -295,11 +295,12 @@ with col8:
 
 
 # ----------------------------------------------------
-# BLENDED
+# BLENDED + WINTER
 # ----------------------------------------------------
 blended = df[df['Category'].str.contains("BLENDED", case=False, na=False)]
+winter = df[df['Category'].str.contains("WINTER", case=False, na=False)]
 
-col9 = st.columns(1)
+col9, col10 = st.columns(2)
 
 with col9:
     st.subheader("Top 10 Blended")
@@ -314,3 +315,15 @@ with col9:
     )
     st.dataframe(top_10_blend, height=400, use_container_width=True)
 
+with col10:
+    st.subheader("Top 10 Winter")
+    winter["Product Name"] = winter["Product Name"].str.split("|").str[0].str.strip()
+
+    top_10_winter = (
+        winter.groupby("Product Name")[["SOLD QTY", "Total Sales"]]
+        .sum()
+        .sort_values(by="Total Sales", ascending=False)
+        .head(10)
+        .reset_index()
+    )
+    st.dataframe(top_10_winter, height=400, use_container_width=True)
