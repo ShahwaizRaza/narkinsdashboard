@@ -2,13 +2,15 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import requests
 import time
-from datetime import datetime, date, timedelta
-import pandas as pd
+import threading
+import json
+import os
+from datetime import datetime, date
 
 app = Flask(__name__)
 CORS(app)
 
-# API Credentials
+# ─── API Credentials ────────────────────────────────────────────────────────
 HEADERS = {
     "accept": "*/*",
     "X-Api-Key": "4fbf65204fd440599dd3817b45cd869a",
@@ -17,244 +19,291 @@ HEADERS = {
     "Content-Type": "application/json-patch+json"
 }
 
-# Define API URLs and Payloads for Different Reports
 REPORTS = {
     "ProductDateWiseSale": {
         "url": "https://narkins.splendidaccounts.com/api/narkins-textile-industries/2125/Reports/ProductDateWiseSaleReport",
-        "branchIds": [2248, 2249, 5574, 5701, 7965, 13468, 13469, 21578, 24709, 24710, 24711, 25762, 2994, 23405, 12721, 25762, 26777, 26778, 26779, 26780, 26781]
+        # Fixed: removed duplicate 25762
+        "branchIds": [2248, 2249, 5574, 5701, 7965, 13468, 13469, 21578,
+                      24709, 24710, 24711, 25762, 2994, 23405, 12721,
+                      26777, 26778, 26779, 26780, 26781]
     }
 }
 
-# Cache configuration
-data_cache = {}
-CACHE_DURATION = 300  # 5 minutes in seconds (change to 60 for 1 minute)
+CACHE_DURATION   = 300   # seconds before a background refresh is triggered
+DISK_CACHE_FILE  = "narkins_cache.json"   # survives server restarts
 
-def fetch_api_data(report_type):
-    """Fetch data from Splendid Accounts API with retries."""
-    print(f"\n{'='*50}")
-    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Fetching fresh data for: {report_type}")
-    print(f"{'='*50}")
-    
-    if report_type not in REPORTS:
-        print(f"❌ Invalid report type: {report_type}")
-        return None
+# ─── In-memory store ─────────────────────────────────────────────────────────
+# Structure: { report_type: {"data": [...], "fetched_at": iso_str, "cache_date": date_str} }
+data_cache: dict = {}
+_refresh_lock = threading.Lock()   # prevents simultaneous fetches
 
-    report_config = REPORTS[report_type]
-    url = report_config["url"]
-    
-    # Calculate date range
-    current_date = date.today()
-    first_day = current_date.replace(day=1)
-    
+
+# ─── Disk Cache ──────────────────────────────────────────────────────────────
+def save_to_disk(report_type: str, records: list):
+    """Persist cache to disk so a server restart doesn't cold-start."""
+    try:
+        existing = {}
+        if os.path.exists(DISK_CACHE_FILE):
+            with open(DISK_CACHE_FILE, "r") as f:
+                existing = json.load(f)
+        existing[report_type] = {
+            "data": records,
+            "fetched_at": datetime.now().isoformat(),
+            "cache_date": str(date.today())
+        }
+        with open(DISK_CACHE_FILE, "w") as f:
+            json.dump(existing, f)
+        print(f"💾 Disk cache updated ({len(records)} records)")
+    except Exception as e:
+        print(f"⚠️  Disk cache write failed: {e}")
+
+
+def load_from_disk() -> dict:
+    """Load persisted cache on startup."""
+    if not os.path.exists(DISK_CACHE_FILE):
+        return {}
+    try:
+        with open(DISK_CACHE_FILE, "r") as f:
+            raw = json.load(f)
+        result = {}
+        for rt, entry in raw.items():
+            result[rt] = {
+                "data":       entry["data"],
+                "fetched_at": datetime.fromisoformat(entry["fetched_at"]),
+                "cache_date": entry["cache_date"]
+            }
+        print(f"📂 Loaded disk cache: {', '.join(f'{k}={len(v[\"data\"])} records' for k, v in result.items())}")
+        return result
+    except Exception as e:
+        print(f"⚠️  Disk cache read failed: {e}")
+        return {}
+
+
+# ─── Core Fetch ──────────────────────────────────────────────────────────────
+def _do_fetch(report_type: str) -> list | None:
+    """
+    Raw API call with retries. Returns processed list or None on failure.
+    Does NOT touch the cache — callers handle that.
+    """
+    config = REPORTS[report_type]
+    today  = date.today()
+    first  = today.replace(day=1)
+
     payload = {
-        "fromDate": first_day.strftime("%Y-%m-%d"),
-        "endDate": current_date.strftime("%Y-%m-%d"),
-        "branchIds": report_config["branchIds"],
+        "fromDate":  first.strftime("%Y-%m-%d"),
+        "endDate":   today.strftime("%Y-%m-%d"),
+        "branchIds": config["branchIds"],
         "ascending": True,
-        "orderBy": "Date"
+        "orderBy":   "Date"
     }
 
-    max_retries = 3
-    for attempt in range(max_retries):
+    for attempt in range(3):
         try:
-            print(f"🔄 Attempt {attempt + 1}/{max_retries}")
-            print(f"📅 Date Range: {payload['fromDate']} to {payload['endDate']}")
-            
-            response = requests.post(url, headers=HEADERS, json=payload, timeout=30)
-            
-            print(f"📡 Response Status: {response.status_code}")
-            
-            if response.status_code == 200:
-                data = response.json()
-                
-                if isinstance(data, list) and len(data) > 0:
-                    print(f"✅ Success! Fetched {len(data)} records")
-                    
-                    # Process data
-                    processed_data = []
-                    for item in data:
-                        processed_data.append({
-                            "Date": item.get("date", ""),
-                            "Month": item.get("monthName", ""),
-                            "Branch": item.get("branchName", ""),
-                            "Code": item.get("productCode", ""),
+            print(f"  🔄 Attempt {attempt + 1}/3  ({first} → {today})")
+            resp = requests.post(config["url"], headers=HEADERS,
+                                 json=payload, timeout=30)
+
+            if resp.status_code == 200:
+                raw = resp.json()
+                if isinstance(raw, list) and raw:
+                    records = [
+                        {
+                            "Date":         item.get("date", ""),
+                            "Month":        item.get("monthName", ""),
+                            "Branch":       item.get("branchName", ""),
+                            "Code":         item.get("productCode", ""),
                             "Product Name": item.get("productName", ""),
-                            "Category": item.get("productCategoryName", ""),
-                            "SOLD QTY": item.get("soldQuantity", 0),
-                            "Type": item.get("symbol", ""),
-                            "Total Sales": item.get("includingTaxAmount", 0)
-                        })
-                    
-                    return processed_data
-                else:
-                    print(f"⚠️ API returned empty data")
-                    return []
-            else:
-                print(f"❌ HTTP Error: {response.status_code}")
-                print(f"Response: {response.text[:200]}")
-                
+                            "Category":     item.get("productCategoryName", ""),
+                            "SOLD QTY":     item.get("soldQuantity", 0),
+                            "Type":         item.get("symbol", ""),
+                            "Total Sales":  item.get("includingTaxAmount", 0)
+                        }
+                        for item in raw
+                    ]
+                    print(f"  ✅ Fetched {len(records)} records")
+                    return records
+                print("  ⚠️  API returned empty list")
+                return []
+
+            print(f"  ❌ HTTP {resp.status_code}: {resp.text[:200]}")
+
         except requests.exceptions.Timeout:
-            print(f"⏱️ Timeout on attempt {attempt + 1}")
-            if attempt < max_retries - 1:
-                time.sleep(2)
+            print(f"  ⏱️  Timeout on attempt {attempt + 1}")
         except requests.exceptions.RequestException as e:
-            print(f"❌ Request Error: {str(e)}")
-            if attempt < max_retries - 1:
-                time.sleep(2)
+            print(f"  ❌ Request error: {e}")
         except Exception as e:
-            print(f"❌ Unexpected error: {str(e)}")
+            print(f"  ❌ Unexpected error: {e}")
             return None
 
-    print(f"❌ Failed after {max_retries} attempts")
+        if attempt < 2:
+            time.sleep(2)
+
+    print("  ❌ All 3 attempts failed")
     return None
 
-@app.route('/')
+
+def _update_cache(report_type: str, records: list):
+    """Write new data into memory and disk caches."""
+    data_cache[report_type] = {
+        "data":       records,
+        "fetched_at": datetime.now(),
+        "cache_date": str(date.today())
+    }
+    save_to_disk(report_type, records)
+
+
+def fetch_api_data(report_type: str) -> list | None:
+    """
+    Public entry point. Fetches, updates both caches, returns records.
+    Thread-safe — won't fire two simultaneous fetches for the same report.
+    """
+    if report_type not in REPORTS:
+        return None
+    with _refresh_lock:
+        print(f"\n{'='*50}")
+        print(f"[{datetime.now():%Y-%m-%d %H:%M:%S}] Fetching: {report_type}")
+        records = _do_fetch(report_type)
+        if records is not None:
+            _update_cache(report_type, records)
+        return records
+
+
+# ─── Background Refresh Thread ───────────────────────────────────────────────
+def _background_refresher():
+    """
+    Runs forever in a daemon thread.
+    Wakes every 60 s and refreshes any cache that is stale or from yesterday.
+    Users NEVER wait — they always get the last good data instantly.
+    """
+    print("🔁 Background refresher started")
+    while True:
+        time.sleep(60)
+        now  = datetime.now()
+        today_str = str(date.today())
+
+        for rt in list(REPORTS.keys()):
+            entry = data_cache.get(rt)
+            if entry is None:
+                continue  # will be fetched on first request
+            age = (now - entry["fetched_at"]).total_seconds()
+            is_stale    = age >= CACHE_DURATION
+            is_old_day  = entry["cache_date"] != today_str
+
+            if is_stale or is_old_day:
+                reason = "new day" if is_old_day else f"stale ({int(age)}s)"
+                print(f"🔁 Background refresh [{reason}]: {rt}")
+                fetch_api_data(rt)
+
+
+# ─── Routes ──────────────────────────────────────────────────────────────────
+@app.route("/")
 def home():
-    """Health check endpoint."""
     return jsonify({
         "status": "running",
         "message": "Narkins API is running!",
-        "api": "Splendid Accounts",
         "endpoints": {
-            "/api/data": "Get sales data (requires ?reportType=ProductDateWiseSale)",
-            "/api/refresh": "Manually refresh data cache (POST)",
-            "/api/cache-status": "Check cache status"
+            "/api/data":         "GET  ?reportType=ProductDateWiseSale",
+            "/api/refresh":      "POST ?reportType=ProductDateWiseSale",
+            "/api/cache-status": "GET"
         },
-        "cache_duration": f"{CACHE_DURATION} seconds"
+        "cache_duration_seconds": CACHE_DURATION
     })
 
-@app.route('/api/data', methods=['GET'])
+
+@app.route("/api/data", methods=["GET"])
 def get_data():
-    """Get data with smart caching that auto-refreshes on new day."""
-    report_type = request.args.get('reportType', 'ProductDateWiseSale')
-
+    """
+    Returns cached data immediately.
+    If cache is empty (very first start, no disk cache) fetches synchronously.
+    Otherwise the background thread keeps cache fresh — zero wait for users.
+    """
+    report_type = request.args.get("reportType", "ProductDateWiseSale")
     if report_type not in REPORTS:
         return jsonify({"error": "Invalid report type"}), 400
 
-    current_time = datetime.now()
-    current_date = current_time.date()
-    
-    # Check if we have cached data
-    if report_type in data_cache:
-        cached_data, cache_time, cache_date = data_cache[report_type]
-        
-        # Check if it's a new day - if so, force refresh
-        if cache_date != current_date:
-            print(f"🌅 New day detected! Previous: {cache_date}, Current: {current_date}")
-            print(f"♻️ Forcing data refresh for new day...")
-        # Check if cache is still fresh (within timeout)
-        elif (current_time - cache_time).total_seconds() < CACHE_DURATION:
-            cache_age = int((current_time - cache_time).total_seconds())
-            print(f"📦 Returning cached data (age: {cache_age}s, {len(cached_data)} records)")
-            return jsonify(cached_data)
-        else:
-            cache_age = int((current_time - cache_time).total_seconds())
-            print(f"⏰ Cache expired (age: {cache_age}s), fetching fresh data...")
-    else:
-        print(f"🆕 No cache found, fetching fresh data...")
-    
-    # Fetch fresh data
-    fresh_data = fetch_api_data(report_type)
-    
-    if fresh_data is None:
-        # If fetch fails, return cached data if available
-        if report_type in data_cache:
-            print("⚠️ Fetch failed, returning stale cache")
-            return jsonify(data_cache[report_type][0])
-        return jsonify({"error": "Failed to fetch data"}), 500
-    
-    if not fresh_data:
-        # Empty data but successful fetch
-        if report_type in data_cache:
-            print("⚠️ Empty data returned, using cache")
-            return jsonify(data_cache[report_type][0])
-        return jsonify([])
+    entry = data_cache.get(report_type)
 
-    # Update cache with current date
-    data_cache[report_type] = (fresh_data, current_time, current_date)
-    print(f"💾 Cache updated with {len(fresh_data)} records for date: {current_date}")
-    
-    return jsonify(fresh_data)
+    if entry is None:
+        # Cold start with no disk cache — must fetch synchronously once
+        print(f"🆕 Cold start fetch for {report_type}")
+        records = fetch_api_data(report_type)
+        if records is None:
+            return jsonify({"error": "Failed to fetch data"}), 500
+        return jsonify(records)
 
-@app.route('/api/refresh', methods=['POST'])
+    age = int((datetime.now() - entry["fetched_at"]).total_seconds())
+    print(f"📦 Serving cache ({age}s old, {len(entry['data'])} records)")
+    return jsonify(entry["data"])
+
+
+@app.route("/api/refresh", methods=["POST"])
 def refresh_data():
-    """Manually force refresh of data."""
-    report_type = request.args.get('reportType', 'ProductDateWiseSale')
-    
+    """Force-refresh on demand (e.g. from Streamlit's Refresh button)."""
+    report_type = request.args.get("reportType", "ProductDateWiseSale")
     if report_type not in REPORTS:
         return jsonify({"error": "Invalid report type"}), 400
-    
-    print(f"🔄 Manual refresh requested for {report_type}")
-    fresh_data = fetch_api_data(report_type)
-    
-    if fresh_data is not None:
-        current_time = datetime.now()
-        current_date = current_time.date()
-        data_cache[report_type] = (fresh_data, current_time, current_date)
-        return jsonify({
-            "status": "success",
-            "message": "Data refreshed successfully",
-            "records": len(fresh_data),
-            "date": str(current_date)
-        })
-    
-    return jsonify({"status": "error", "message": "Failed to refresh data"}), 500
 
-@app.route('/api/cache-status', methods=['GET'])
+    print(f"🔄 Manual refresh: {report_type}")
+    records = fetch_api_data(report_type)
+
+    if records is not None:
+        return jsonify({
+            "status":  "success",
+            "records": len(records),
+            "date":    str(date.today())
+        })
+    return jsonify({"status": "error", "message": "Fetch failed"}), 500
+
+
+@app.route("/api/cache-status", methods=["GET"])
 def cache_status():
-    """Get current cache status."""
+    now = datetime.now()
     status = {}
-    current_time = datetime.now()
-    
-    for report_type in data_cache:
-        cached_data, cache_time, cache_date = data_cache[report_type]
-        age_seconds = int((current_time - cache_time).total_seconds())
-        
-        status[report_type] = {
-            "cached_date": str(cache_date),
-            "cache_time": cache_time.strftime("%Y-%m-%d %H:%M:%S"),
-            "age_seconds": age_seconds,
-            "age_minutes": round(age_seconds / 60, 1),
-            "records": len(cached_data),
-            "is_fresh": age_seconds < CACHE_DURATION,
-            "is_today": cache_date == current_time.date()
+    for rt, entry in data_cache.items():
+        age = int((now - entry["fetched_at"]).total_seconds())
+        status[rt] = {
+            "cached_date":  entry["cache_date"],
+            "cache_time":   entry["fetched_at"].strftime("%Y-%m-%d %H:%M:%S"),
+            "age_seconds":  age,
+            "age_minutes":  round(age / 60, 1),
+            "records":      len(entry["data"]),
+            "is_fresh":     age < CACHE_DURATION,
+            "is_today":     entry["cache_date"] == str(date.today())
         }
-    
     return jsonify({
-        "current_time": current_time.strftime("%Y-%m-%d %H:%M:%S"),
-        "current_date": str(current_time.date()),
+        "current_time":           now.strftime("%Y-%m-%d %H:%M:%S"),
         "cache_duration_seconds": CACHE_DURATION,
-        "caches": status
+        "caches":                 status
     })
 
-if __name__ == '__main__':
+
+# ─── Startup ─────────────────────────────────────────────────────────────────
+if __name__ == "__main__":
     print("""
-    ╔═══════════════════════════════════════════════╗
-    ║   🚀 NARKINS SALES API SERVER STARTING...    ║
-    ╚═══════════════════════════════════════════════╝
-    """)
-    print(f"🏢 API Provider: Splendid Accounts")
-    print(f"📅 Today's Date: {datetime.now().strftime('%Y-%m-%d')}")
-    print(f"⏱️  Cache Duration: {CACHE_DURATION} seconds")
-    print(f"🔄 Auto-refresh: Enabled (on cache expiry)")
-    print(f"🌅 New Day Detection: Enabled")
-    print(f"\n{'='*50}\n")
-    
-    # Initial data fetch
-    print("📊 Fetching initial data...")
-    for report in REPORTS.keys():
-        data = fetch_api_data(report)
-        if data:
-            current_time = datetime.now()
-            current_date = current_time.date()
-            data_cache[report] = (data, current_time, current_date)
-            print(f"✅ Cached {len(data)} records for {report}")
-        else:
-            print(f"⚠️ No data cached for {report}")
-    
+╔═══════════════════════════════════════════════╗
+║   🚀 NARKINS SALES API SERVER STARTING...    ║
+╚═══════════════════════════════════════════════╝
+""")
+    # 1. Try loading from disk first (instant — no API call)
+    disk = load_from_disk()
+    today_str = str(date.today())
+    for rt, entry in disk.items():
+        data_cache[rt] = entry
+        print(f"📂 Restored {len(entry['data'])} records for {rt} from disk")
+
+    # 2. For any report still missing or from a previous day, fetch now
+    for rt in REPORTS:
+        entry = data_cache.get(rt)
+        if entry is None or entry["cache_date"] != today_str:
+            print(f"📊 Fetching fresh data for {rt}...")
+            fetch_api_data(rt)
+
+    # 3. Start background refresher
+    t = threading.Thread(target=_background_refresher, daemon=True)
+    t.start()
+
     print(f"\n{'='*50}")
-    print("✅ Server ready!")
-    print("🌐 Access at: http://127.0.0.1:5000")
+    print("✅ Server ready at http://127.0.0.1:5000")
     print(f"{'='*50}\n")
-    
-    app.run(debug=True, port=5000, use_reloader=False)
+
+    app.run(debug=False, port=5000, use_reloader=False)
